@@ -20,3 +20,7 @@ mtcars_character <- data.frame(lapply(mtcars, as.character))
 mtcars_character
 str(mtcars_character)
 
+write.csv(mtcars_character, 'class_practice_28Jan25.csv')
+
+
+

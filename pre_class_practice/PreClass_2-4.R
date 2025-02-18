@@ -59,4 +59,6 @@ penguins_fat_size %>%
   ggplot(aes(x = bill_length_mm, y = body_mass_g, color = sex)) +
 geom_point()#+
 
+data(peng)
+
   

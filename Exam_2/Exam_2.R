@@ -3,7 +3,7 @@ library(ggplot2)
 #----------------------------------------------
 ##1. Read in the unicef data (10 pts)
 
-u5mr <- read_csv("Exam_2/unicef-u5mr.csv")
+u5mr <- read_csv("unicef-u5mr.csv")
 view(u5mr)
 
 #----------------------------------------------
@@ -65,12 +65,12 @@ mod3 <- lm(U5MR ~ Year * Continent, data = model_data)
 AIC(mod1, mod2, mod3)
 BIC(mod1, mod2, mod3)
 ## Lower AIC and BIC values indicate better model fit so I would say- 
-  # Model 3 (U5MR ~ Year * Continent) is the best based on both AIC and BIC.
+# Model 3 (U5MR ~ Year * Continent) is the best based on both AIC and BIC.
 
 #----------------------------------------------
 ##9. Plot the 3 models’ predictions like so: (10 pts)
 
-  prediction_grid <- model_data %>%
+prediction_grid <- model_data %>%
   select(Year, Continent, CountryName) %>%
   distinct()
 prediction_grid <- prediction_grid %>%
@@ -95,19 +95,19 @@ ggsave("Ashbaker_Plot_3.png", width = 10, height = 6)
 
 #----------------------------------------------
 ##10. BONUS - Using your preferred model, predict what the U5MR would be for Ecuador in the year 2020. 
-  #The real value for Ecuador for 2020 was 13 under-5 deaths per 1000 live births. 
-  #How far off was your model prediction???
- 
+#The real value for Ecuador for 2020 was 13 under-5 deaths per 1000 live births. 
+#How far off was your model prediction???
+
 ecuador_2020 <- data.frame(
-    Year = 2020,
-    Continent = "Americas")
+  Year = 2020,
+  Continent = "Americas")
 ecuador_2020$predicted_U5MR <- predict(mod3, newdata = ecuador_2020)
 ecuador_2020$real_value <- 13
 ecuador_2020$error <- ecuador_2020$predicted_U5MR - ecuador_2020$real_value
 ecuador_2020
 
 # The model (mod3) predicted the U5MR for Ecuador in 2020 would be -10.580
-                            # which is -23.58018 off from the real value
+# which is -23.58018 off from the real value
 
 
 ## Create any model of your choosing that improves upon this “Ecuadorian measure of model correctness.”
@@ -125,6 +125,6 @@ ecuador_2020$mod4_error <- ecuador_2020$mod4_predicted - ecuador_2020$real_value
 ecuador_2020
 
 # The model (mod4) predicted the U5MR for Ecuador in 2020 would be 11.999
-                       # which is only -1.000915 off from the real value
+# which is only -1.000915 off from the real value
 
 #----------------------------------------------

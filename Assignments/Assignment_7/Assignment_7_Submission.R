@@ -2,7 +2,7 @@ library(tidyverse)
 library(ggplot2)
 library(janitor)
 
-relig_df <- read_csv("Data/Utah_Religions_by_County.csv")
+relig_df <- read_csv("Utah_Religions_by_County.csv")
 view(relig_df)
 #----------------------------------------------------------------------------------
 # Clean column names to be consistent and easy to reference in code
@@ -60,7 +60,8 @@ ggplot(relig_vs_non, aes(x = lds, y = non_religious)) +
 cor(relig_vs_non$lds, relig_vs_non$non_religious)
 
 #----------------------------------------------------------------------------------
-# Would be cool to show several religions vs. non-religious group proportion per county
+# Thought Process: # I wonder what the overall religious groups vs non-religous per county looks like:
+                 # Would be cool to show several religions vs. non-religious group proportion per county
 #----------------------------------------------------------------------------------
 
 # Define a set of top religions to explore visually

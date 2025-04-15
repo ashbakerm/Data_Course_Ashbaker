@@ -1,44 +1,155 @@
 ---
-output: 
-html_document:
-  number_sections=TRUE
-pagetitle: Assignment_9
+title: "Assignment_9"
+author: "Myles Ashbaker"
+output:
+  html_document:
+    toc: true
+    toc_float: false
+    number_sections: false
+    theme: readable
 ---
 
-
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE) 
 ```
 
-# **Assignment 9**
+## Introduction
+#### This analysis explores how GRE scores, GPA, and the prestige (rank) of undergraduate institutions affect graduate school admissions. Admission is a binary outcome (1 = admitted, 0 = not admitted), so we apply logistic regression models to understand and predict it.
 
-In this assignment, you will use R (within R-Studio) to:
-  
-+ Load and clean a real data set
-+ Conduct exploratory analyses, including informative figures
-+ Build and test appropriate models
-+ Draw conclusions about your data
-+ Combine all of the above into a well-documented R-Markdown report and export (knit) it into an HTML file
+## Packages and Data
+```{r load-libraries, message=FALSE}
+library(tidyverse)
+library(modelr)
+library(easystats)
+library(ggpubr)
+library(caret)
+library(GGally)
+library(performance)
+library(MASS)
+```
+##### Now, a quick glance at the structure and summary of the dataset gives a sense of the variables we'll be working with. 
+```{r} 
+# Load the dataset
+admissions <- read_csv("../../Data/GradSchool_Admissions.csv", show_col_types = FALSE) %>%
+  mutate(
+    admit = factor(admit),
+    rank = factor(rank)
+  )
 
-**All file paths should be relative, starting from *your* Assignment_9 directory!!**
+```
 
-**This means that you need to create a new R-Project named "Assignment_9.Rproj" in your Assignment_9 directory, and work from scripts within that.**
+```{r}
+glimpse(admissions)
+summary(admissions)
 
+```
+##### We have 400 rows, and the outcome variable (`admit`) is binary. The predictors include continuous GRE scores, GPA values, and a categorical undergraduate institution `rank` from 1 (highest prestige) to 4 (lowest).
 
-## **For credit...**
+## Exploratory Analysis
+##### To start, I’ll explore the pairwise relationships between the predictors and admission outcome. This can help reveal any obvious patterns or correlations that may guide model building.
+```{r ggpairs-plot, message=FALSE}
+admissions_subset <- dplyr::select(admissions, gre, gpa, rank, admit)
+GGally::ggpairs(admissions_subset, aes(color = admit))
 
-1.  Push a completed version of your Rproj and R-markdown file (details at end of this assignment) to GitHub
-2.  Your score will also depend on your analyses and presentation of your final report
+```
 
-____________
+##### Let’s take a closer look at the distributions of GRE and GPA, broken down by admission outcome. This should give some insight into whether higher test scores or grades are associated with a greater chance of being admitted.
 
-# Your tasks:
+```{r}
+admissions %>% 
+  ggplot(aes(x = gre, fill = admit)) + 
+  geom_density(alpha = 0.5) + 
+  theme_minimal()
 
-+ Use the data set "/Data/GradSchool_Admissions.csv"
-+ You will explore and model the predictors of graduate school admission
-  - the "admit" column is coded as 1=success and 0=failure (that's binary, so model appropriately)
-  - the other columns are the GRE score, the GPA, and the rank of the undergraduate institution, where I is "top-tier."
-+ Document your data explorations, figures, and conclusions in a reproducible R-markdown report
-+ That means I want to see, in your html report, your process of model evaluation and selection. Here's an [example](https://gzahn.github.io/data-course/Repository/Assignments/Assignment_9/example.html){target="_blank"}
-+ Upload your **self-contained** R project, including knitted HTML report, to GitHub in *your* Assignment_9 directory
+admissions %>% 
+  ggplot(aes(x = gpa, fill = admit)) + 
+  geom_density(alpha = 0.5) + 
+  theme_minimal()
+
+admissions %>% 
+  ggplot(aes(x = rank, fill = admit)) + 
+  geom_bar(position = "fill") + 
+  theme_minimal()
+
+```
+
+## Modeling
+##### Now, I’ll define a few logistic regression models with increasing complexity. Since the outcome is binary (admitted or not), logistic regression is appropriate. I’ll start simple and gradually add interaction terms and polynomial features to see how model fit improves.
+```{r}
+mod1 <- glm(admit ~ gre + gpa + rank, data = admissions, family = binomial)
+mod2 <- glm(admit ~ gre * gpa + rank, data = admissions, family = binomial)
+mod3 <- glm(admit ~ gre * gpa * rank, data = admissions, family = binomial)
+mod4 <- glm(admit ~ gre * gpa * rank + I(gre^2) + I(gpa^2), data = admissions, family = binomial)
+
+```
+##### Next, I’ll use stepwise AIC-based selection to refine the most complex model. This process helps identify a more parsimonious model without sacrificing predictive performance. I also will create a simple alternative model.
+```{r}
+full_mod <- glm(admit ~ gre * gpa * rank, data = admissions, family = binomial)
+step <- stepAIC(full_mod, trace = 0)
+mod5 <- glm(formula = step$formula, data = admissions, family = binomial)
+
+# Simpler alternative
+mod6 <- glm(admit ~ (gre + gpa) * rank, data = admissions, family = binomial)
+
+```
+
+## Model Comparison
+##### With several models defined, I’ll compare their performance using metrics like AIC, R², and RMSE. This will help identify which model best balances complexity and fit.
+```{r, message=FALSE}
+compare_performance(mod1, mod2, mod3, mod4, mod5, mod6, rank = TRUE) %>% plot()
+
+```
+
+## Predictions vs Observations
+##### To evaluate how well the models capture admission outcomes, I’ll plot the predicted probabilities against the actual results. This helps visualize model fit and reveals any consistent over- or under-predictions.
+```{r, message=FALSE}
+admissions %>%
+  gather_predictions(mod1, mod2, mod3, mod4, mod5, mod6) %>%
+  ggplot(aes(x = as.numeric(admit), y = pred, color = model)) +
+  geom_jitter(width = 0.1, alpha = 0.3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(title = "Predicted Probability vs Actual Admission")
+
+```
+
+## Cross-Validation
+##### I’ll now split the data into training and testing sets (to guard against overfitting). By fitting models on one subset and evaluating them on another, we get a better sense of how they’ll generalize to new data.
+```{r, message=FALSE}
+set.seed(123)
+train_index <- createDataPartition(admissions$admit, p = 0.8, list = FALSE)
+train_data <- admissions[train_index, ]
+test_data <- admissions[-train_index, ]
+
+# Refit models
+mod5 <- glm(formula = mod5$formula, data = train_data, family = binomial)
+mod6 <- glm(formula = mod6$formula, data = train_data, family = binomial)
+
+# Predict on test set
+gather_predictions(test_data, mod5, mod6) %>%
+  ggplot(aes(x = as.numeric(admit), y = pred, color = model)) +
+  geom_jitter(width = 0.1, alpha = 0.3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(title = "Test Set Predictions")
+
+```
+
+## Model Interpretation
+##### Finally, I’ll interpret the coefficients from the final model to understand how each variable contributes to admission odds. This output includes log-odds estimates, but I’ll also consider converting to odds ratios for easier interpretation.
+```{r}
+model_parameters(mod6)
+
+```
+#### The final model suggests that GRE and GPA do not significantly predict admission at the p < 0.05 level, nor do interactions with undergraduate rank. However, trends indicate that higher GRE/GPA scores may be associated with increased odds of admission. Lack of significance could stem from small sample size or limited variance. Odds ratios (via exponentiation) can provide clearer intuition.
+
+## Conclusion
+#### While no strong predictors were statistically significant, the modeling process revealed potential interactions worth further investigation. 
+### Takeaway Messages:
+- GRE scores showed a small positive association with admission odds, but the effect was not statistically significant.
+- GPA also trended positively, but did not significantly predict admission in this sample.
+- The prestige of the undergraduate institution (rank) had little predictive power on its own or in combination with other variables.
+- There were no meaningful interactions between GRE/GPA and school rank.
+- Simpler models performed comparably to more complex ones, emphasizing the value of parsimony in predictive modeling.
+
 

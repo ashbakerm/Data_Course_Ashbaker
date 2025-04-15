@@ -2,7 +2,7 @@ library(tidyverse)
 library(ggplot2)
 library(gganimate)
 
-dat <- read_csv("/Users/mylesashbaker/Desktop/Data_Course_Ashbaker/Data/BioLog_Plate_Data.csv")
+dat <- read_csv(“../../Data/BioLog_Plate_Data.csv")
 
 dat_long <- dat %>%
   pivot_longer(cols = starts_with("Hr_"),

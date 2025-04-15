@@ -52,9 +52,7 @@ admissions_subset <- dplyr::select(admissions, gre, gpa, rank, admit)
 GGally::ggpairs(admissions_subset, aes(color = admit))
 
 ```
-
 ##### Let’s take a closer look at the distributions of GRE and GPA, broken down by admission outcome. This should give some insight into whether higher test scores or grades are associated with a greater chance of being admitted.
-
 ```{r}
 admissions %>% 
   ggplot(aes(x = gre, fill = admit)) + 

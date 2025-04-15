@@ -93,3 +93,4 @@ gather_predictions(test_data, mod5, mod6) %>%
 
 # Interpret final model
 model_parameters(mod6)
+

@@ -18,7 +18,7 @@ library(dplyr)
 ```
 
 ## Task 1: Load, Clean, and Plot Faculty Salaries
-
+##### The original faculty salary dataset contains separate columns for each rank and compensation type. To make it suitable for analysis, I reshaped it into tidy format where each row represents a single salary observation by Rank, Tier, and State.
 ```{r}
 salary_raw <- read_csv("FacultySalaries_1995.csv")
 
@@ -46,7 +46,8 @@ salary_long <- salary_raw %>%
   ) %>%
   drop_na(Tier)
 ```
-
+## Plot: Salary by Rank and Tier
+##### This boxplot shows the distribution of faculty salaries by rank, separated by institutional tier. Salaries generally increase with rank, and Tier I institutions tend to pay higher salaries overall.
 ```{r}
 ggplot(salary_long, aes(x = Rank, y = Value, fill = Rank)) +
   geom_boxplot(outlier.size = 1.5, width = 0.6) +
@@ -63,7 +64,7 @@ ggplot(salary_long, aes(x = Rank, y = Value, fill = Rank)) +
 ```
 
 ## Task 2: ANOVA Model
-
+##### I built an ANOVA model to examine how salary is affected by State, Tier, and Rank.The summary shows that all three predictors have statistically significant effects on salary.
 ```{r}
 anova_model <- aov(Value ~ State + Tier + Rank, data = salary_long)
 summary(anova_model)
@@ -75,7 +76,7 @@ anova_table
 ```
 
 ## Task 3: Load and Tidy Juniper Oils Data
-
+##### This dataset includes chemical concentrations of oils from burned cedar trees. I reshaped it into tidy format so each row represents a single chemical observation per sample, and we can analyze changes over time.
 ```{r}
 juniper_raw <- read_csv("Juniper_Oils.csv")
 
@@ -97,7 +98,7 @@ juniper_tidy <- juniper_raw %>%
 ```
 
 ## Task 4: Plot Chemical Concentrations Over Time
-
+##### This plot shows how the concentration of each chemical compound changes with the number of years since the tree was burned. Loess smoothing highlights downward or upward trends depending on the compound.
 ```{r chem-plot, fig.width=14, fig.height=8}
 ggplot(juniper_tidy, aes(x = YearsSinceBurn, y = Concentration)) +
   geom_smooth(method = "loess", se = TRUE, color = "blue", linewidth = 1) +
@@ -106,9 +107,8 @@ ggplot(juniper_tidy, aes(x = YearsSinceBurn, y = Concentration)) +
   theme_minimal(base_size = 14)
 ```
 
-
 ## Task 5: GLM to Identify Significant Trends
-
+##### I fit individual GLM models for each chemical to test whether concentration changes significantly over time. Below is a table of compounds that showed a statistically significant relationship (p < 0.05) with Years Since Burn.
 ```{r}
 glm_results <- juniper_tidy %>%
   group_by(Compound) %>%

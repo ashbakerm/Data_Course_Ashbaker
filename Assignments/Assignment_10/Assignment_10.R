@@ -14,7 +14,7 @@ library(MASS)
 library(janitor)
 
 # ---- Data ----
-depression_raw <- read_csv("../../Data/MRA_Student_Depression_Dataset.csv",
+depression_raw <- read_csv("../../Assignments/Assignment_10/MRA_Student_Depression_Dataset.csv",
                            show_col_types = FALSE)
 
 

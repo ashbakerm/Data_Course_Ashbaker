@@ -1,5 +1,5 @@
 ---
-title: "Myles Ashbaker"
+title:
 output: 
   html_document:
     toc: false
@@ -38,7 +38,7 @@ output:
 
 ### Explore My Work:
 
-<a href="Assignment_10.html" class="link-button">BIOL 3100 Final Project</a>  
+<a href="Assignment_10.html" class="link-button">BIOL 3100 Final Project</a>
 <a href="MylesAshbaker_Resume.pdf" class="link-button">My Resume</a>  
 <a href="AboutMe.html" class="link-button">About Me</a>
 

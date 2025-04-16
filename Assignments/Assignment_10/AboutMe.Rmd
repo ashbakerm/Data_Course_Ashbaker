@@ -1,0 +1,11 @@
+---
+title: "About Me"
+output: html_document
+---
+#### Myles Ashbaker
+
+I’m a biology graduate from Utah Valley University with a deep interest in metabolic health, nutrition, and human optimization. I manage a sales team for Greenix Pest Control during the summers. Outside of that, I’m building businesses in wellness, skincare, and diagnostics—including a future metabolic health lab in Tri-Cities, WA. I am all about systems, strategy, and creating impact. I’m especially interested in bridging the gap between science and everyday life, creating systems that make better health more accessible and actionable.
+
+Lets Connect!
+
+ashbaker.associates@gmail.com

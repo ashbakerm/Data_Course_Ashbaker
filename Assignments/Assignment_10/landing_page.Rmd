@@ -1,0 +1,47 @@
+---
+title: "Myles Ashbaker"
+output: 
+  html_document:
+    toc: false
+    toc_float: false
+    theme: readable
+    df_print: paged
+---
+
+<style>
+.centered {
+  text-align: center;
+  margin-top: 100px;
+}
+.link-button {
+  display: inline-block;
+  padding: 12px 24px;
+  margin: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  background-color: #2c3e50;
+  border-radius: 8px;
+  text-decoration: none;
+}
+.link-button:hover {
+  background-color: #1abc9c;
+}
+</style>
+
+<div class="centered">
+
+# Welcome!  
+### I'm Myles Ashbaker
+
+---
+
+### Explore My Work:
+
+<a href="Assignment_10.html" class="link-button">BIOL 3100 Final Project</a>  
+<a href="MylesAshbaker_Resume.pdf" class="link-button">My Resume</a>  
+<a href="AboutMe.html" class="link-button">About Me</a>
+
+</div>
+
+

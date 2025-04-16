@@ -1,0 +1,213 @@
+---
+title: "Assignment_10; Predicting Depression from Student Data"
+author: "Myles Ashbaker"
+output:
+  html_document:
+    toc: true
+    toc_float: false
+    number_sections: false
+    theme: readable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.width = 12,
+  fig.height = 6,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## Introduction
+#### This analysis explores how psychological, academic, and lifestyle factors relate to depression among a population of students. Depression is treated as a binary outcome (Yes = diagnosed with depression, No = not diagnosed), and I apply logistic regression models to understand and predict it.
+#### The dataset includes over 27,000 responses with variables such as academic pressure, CGPA, suicidal thoughts, sleep duration, and more. Several of the predictors are categorical (e.g., gender, profession, dietary habits), while others are numeric (e.g., age, CGPA, academic pressure). My goal is to determine which variables are most predictive of depression and evaluate several logistic models to compare performance and interpretability.
+
+## Packages
+```{r load-libraries, message=FALSE}
+library(tidyverse)
+library(modelr)
+library(easystats)
+library(ggpubr)
+library(caret)
+library(GGally)
+library(performance)
+library(MASS)
+library(janitor)
+```
+## Data
+```{r}
+depression_raw <- read_csv("../../Data/MRA_Student Depression Dataset.csv", show_col_types = FALSE)
+
+# ---- Basic Cleaning & Type Conversion ----
+depression <- depression_raw %>%
+  rename(suicidal_thoughts = `Have you ever had suicidal thoughts ?`) %>%
+  clean_names() %>%
+  mutate(
+    across(c(gender, city, profession, sleep_duration, dietary_habits,
+             degree, suicidal_thoughts, family_history_of_mental_illness),
+           as.factor),
+    depression = factor(depression, levels = c(0, 1), labels = c("No", "Yes"))
+  )
+
+# ---- Data Check ----
+glimpse(depression)
+summary(depression)
+```
+
+## Exploratory Analysis
+##### I’ll begin by exploring patterns in the data—checking for missing values, class balance, and how depression relates to other variables visually.
+```{r, warning=FALSE}
+# Missing Data Overview
+depression %>% 
+  summarise(across(everything(), \(x) mean(is.na(x)) * 100)) %>% 
+  pivot_longer(everything(), names_to = "variable", values_to = "pct_missing") %>% 
+  arrange(desc(pct_missing))
+
+# Depression Outcome Distribution
+depression %>% 
+  count(depression, name = "n") %>% 
+  mutate(prop = n / sum(n))
+
+# Plot: Numeric Distributions by Depression
+numeric_vars <- depression %>% 
+  dplyr::select(where(is.numeric), -id) %>% 
+  names()
+depression %>% 
+  pivot_longer(cols = all_of(numeric_vars), names_to = "variable", values_to = "value") %>% 
+  ggplot(aes(x = value, fill = depression)) +
+  geom_density(alpha = 0.4) +
+  facet_wrap(~ variable, scales = "free") +
+  theme_minimal()
+
+# Plot: Boxplots by Depression Status
+depression %>% 
+  pivot_longer(cols = all_of(numeric_vars), names_to = "variable", values_to = "value") %>% 
+  ggplot(aes(x = depression, y = value, fill = depression)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  facet_wrap(~ variable, scales = "free") +
+  theme_minimal()
+
+# Plot: Categorical Variable Proportions
+cat_vars <- depression %>% 
+   dplyr::select(where(is.factor), -depression) %>% 
+  names()
+depression %>% 
+  pivot_longer(cols = all_of(cat_vars), names_to = "variable", values_to = "value") %>% 
+  ggplot(aes(x = value, fill = depression)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ variable, scales = "free_x") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Plot: Pairwise Numeric Relationships
+pair_vars <- depression %>% 
+   dplyr::select(where(is.numeric), -id, -job_satisfaction) %>% 
+  names()
+GGally::ggpairs(depression, columns = pair_vars, aes(color = depression, alpha = 0.4))
+```
+
+## Modeling
+##### Next, I’ll build some logistic regression models using key predictors to estimate the probability of a student experiencing depression.
+##### I selected academic pressure, CGPA, suicidal thoughts, and sleep duration as my primary predictors.
+```{r}
+# ---- Logistic Regression Models ----
+mod1 <- glm(depression ~ academic_pressure + cgpa + suicidal_thoughts, data = depression, family = binomial)
+mod2 <- glm(depression ~ academic_pressure * cgpa + suicidal_thoughts, data = depression, family = binomial)
+mod3 <- glm(depression ~ academic_pressure * cgpa * suicidal_thoughts, data = depression, family = binomial)
+mod4 <- glm(depression ~ academic_pressure * cgpa * suicidal_thoughts + I(academic_pressure^2) + I(cgpa^2), data = depression, family = binomial)
+
+# ---- Stepwise AIC Model ----
+full_mod <- glm(depression ~ ., data = depression, family = binomial)
+step_mod <- stepAIC(full_mod, trace = 0)
+mod5 <- glm(formula = step_mod$formula, data = depression, family = binomial)
+
+# ---- Simple Alt. Model ----
+mod6 <- glm(depression ~ (academic_pressure + cgpa) * suicidal_thoughts + sleep_duration, data = depression, family = binomial)
+```
+
+## Model Comparison
+##### I’ll compare the performance of all models using metrics like accuracy and AIC to find the best balance between complexity and predictive power.
+```{r, message=FALSE, warning=FALSE}
+comps <- compare_performance(mod1, mod2, mod3, mod4, mod5, mod6, rank = TRUE)
+print(comps)
+plot(comps) + theme_minimal()
+```
+
+##### mod5 is the clear winner across all metrics — best fit and most accurate
+
+## Predictions vs Observations
+##### To evaluate model fit, I’ll compare predicted probabilities with actual outcomes. This helps me see how well the models separate the two classes.
+```{r, message=FALSE, warning=FALSE}
+# Plot: Predicted vs Observed for All Models
+depression_preds <- depression %>% gather_predictions(mod1, mod2, mod3, mod4, mod5, mod6, type = "response")
+depression_preds %>%
+  ggplot(aes(x = as.numeric(depression) - 1, y = pred, color = model)) +
+  geom_jitter(width = 0.1, alpha = 0.3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Predicted Probability vs Actual Depression Status",
+    x = "Actual Depression (0 = No, 1 = Yes)",
+    y = "Predicted Probability"
+  )
+# Each dot is a predicted probability for an individual
+# The x-axis is their actual depression status (0 or 1)
+```
+
+##### The best model (mod5) produces consistently higher predicted probabilities 
+##### for true positives (depression = 1) than for true negatives
+
+## Cross-Validation
+##### To test how well the top models generalize, I’ll use a train/test split and assess performance on new, unseen data.
+```{r, message=FALSE, warning=FALSE}
+set.seed(123)
+train_index <- createDataPartition(depression$depression, p = 0.8, list = FALSE)
+train_data <- depression[train_index, ]
+test_data  <- depression[-train_index, ]
+
+mod5_cv <- glm(formula = mod5$formula, data = train_data, family = binomial)
+mod6_cv <- glm(formula = mod6$formula, data = train_data, family = binomial)
+
+test_preds <- test_data %>% gather_predictions(mod5_cv, mod6_cv, type = "response")
+
+# Plot: Cross-Validation Test Predictions vs Actual
+test_preds %>%
+  ggplot(aes(x = as.numeric(depression) - 1, y = pred, color = model)) +
+  geom_jitter(width = 0.1, alpha = 0.3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(
+    title = "Test Set Predictions vs Actual Depression Status",
+    subtitle = "Dashed line shows ideal prediction",
+    x = "Actual Depression (0 = No, 1 = Yes)",
+    y = "Predicted Probability"
+  )
+```
+
+## Model Interpretation
+##### Finally, I’ll interpret the final model’s coefficients to understand how each predictor affects depression risk—using odds ratios for clearer meaning.
+```{r}
+summary(mod6)
+model_parameters(mod6, exponentiate = TRUE)
+
+# Plot: Coefficient Estimates for Final Model (mod6)
+plot(model_parameters(mod6)) +
+  theme_minimal() +
+  labs(title = "Coefficient Estimates – Final Model (mod6)")
+```
+
+
+##### The final model suggests that individuals with high academic pressure, low sleep duration, and a history of suicidal thoughts are more likely to report depression. Even modest increases in CGPA are associated with slightly increased odds of depression, though this may reflect perfectionism or pressure to maintain high performance.
+
+## Conclusion
+#### This analysis explored how psychological, academic, and lifestyle factors predict depression status in a sample of over 27,000 individuals. Six logistic regression models were built and compared. The stepwise AIC model (mod5) achieved the highest overall performance, but the final hand-tuned model (mod6) offered strong interpretability while still maintaining solid predictive power.
+#### Key predictors of depression included academic pressure, history of suicidal thoughts, low sleep duration, and (to a lesser extent) CGPA. Interaction terms and extended sleep durations did not consistently improve model fit.
+
+## Takeaway Messages
+- Academic pressure is a strong and consistent predictor of depression.
+- Individuals reporting suicidal thoughts are significantly more likely to report depression.
+- Short sleep duration (less than 5 hours) is associated with increased depression risk.
+- CGPA has a modest positive association, possibly reflecting academic perfectionism or stress.
+- More complex interactions and rare sleep categories (e.g., “Other”) do not improve the model.
+- A parsimonious, interpretable model can perform nearly as well as a fully automated model, making it valuable for real-world applications in student mental health screening and intervention.

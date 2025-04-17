@@ -30,7 +30,7 @@ Specifically:
 1. **Starting Salary Prediction** – applying multiple linear regression to identify the key drivers of initial compensation (e.g., GPA, internships, soft skills).  
 2. **Entrepreneurial Propensity** – using logistic regression and threshold tuning to understand which attributes influence the likelihood of pursuing entrepreneurship after graduation.
 
-The goal of this study is to provide actionable insights for students and advisors on the most impactful factors for salary and entrepreneurial outcomes.
+The goal of this study is to provide actionable insights that can help students, educators, and academic advisors better understand which factors most strongly influence early-career salary and the likelihood of pursuing entrepreneurship. By identifying these key drivers, the findings aim to support more informed decision-making around course selection, skill development, and career planning.
 
 # Data Loading & Cleaning
 
@@ -233,36 +233,34 @@ conf_final <- confusionMatrix(pred_final, test$entrepreneurship, positive = "Yes
 print(conf_final)
 ```
 
-# Summary  
-
-- **Data preparation:** Cleaned variable names (janitor::clean_names), removed the ID column, and converted categorical variables to factors, leaving 19 variables for 5,000 graduates.  
-- **Exploratory analysis:** Visualised numeric relationships (pairwise plots) and key univariate distributions. Plots showed clear positive trends between internships, soft‑skills, and starting salary, and strong salary separation by field of study with STEM majors leading.  
-
-- **Model workflow**
- - **Salary:** Compared a theory‑driven baseline model to a full model, then used stepwise AIC to obtain a parsimonious linear model. Test RMSE ≈ **`r scales::dollar(round(rmse_val, 0))`**.
-  
-  - **Entrepreneurship:** Fit a full logistic model, applied stepwise AIC, then tuned the probability threshold to balance performance (optimal ≈ `r best_t`). Achieved test accuracy ≈ `r round(metrics$Accuracy[metrics$threshold==best_t], 3)` 
 
 # Conclusions  
 
-**Salary Insights** 
+**Salary:** I compared a theory‑driven baseline model to a full model, then used stepwise AIC to identify a more parsimonious linear model. Test RMSE was approximately **`r scales::dollar(round(rmse_val, 0))`**, indicating a reasonable degree of predictive accuracy.
 
-- **Experiential learning** (internships) and **interpersonal abilities** (soft skills, networking) have the largest positive impact on starting salary. 
-- Choice of major matters - **STEM graduates** consistently command higher pay.  
-- The final model’s RMSE (about **`r scales::dollar(round(rmse_val, 0))`**) indicates reasonably accurate salary prediction across diverse backgrounds.  
+**Entrepreneurship:** I fit a full logistic regression model, applied stepwise AIC for model selection, and tuned the classification threshold (optimal ≈ `r best_t`) to balance sensitivity and specificity. This yielded a test accuracy of about **`r round(metrics$Accuracy[metrics$threshold==best_t], 3)`**.
 
-**Entrepreneurship Insights** 
+### Key Insights
 
-- **Academic strength** (higher high‑school GPA) and **personal outlook** (career satisfaction) modestly increase the odds of pursuing entrepreneurship.  
-- Using a tuned cutoff (about `r best_t`) balances sensitivity and specificity, providing roughly **60 percent** correct identification for both entrepreneurs and non‑entrepreneurs.  
+- **Salary Insights**  
+  - **Experiential learning** (internships) and **interpersonal abilities** (soft skills, networking) had the strongest positive effect on starting salary.  
+  - Choice of major plays a major role — **STEM graduates** consistently earn more than non‑STEM peers.  
+  - The final model’s RMSE (about **`r scales::dollar(round(rmse_val, 0))`**) reflects moderate but usable predictive power across a diverse sample.
 
-**Actionable Takeaways**  
+- **Entrepreneurship Insights**  
+  - **Academic performance** (especially high school GPA) and **career satisfaction** both modestly increase the likelihood of pursuing entrepreneurship.  
+  - A tuned cutoff (around `r best_t`) provided a balanced ability to detect both entrepreneurs and non‑entrepreneurs, achieving roughly **60%** classification accuracy for each group.
 
-- Students: Prioritise **internships** and soft‑skill development** to boost early‑career earnings; nurture **satisfaction and academic excellence** if entrepreneurship is a goal.  
+**These results highlight how practical experience and interpersonal development boost early‑career salary, while strong academics and a satisfaction‑driven mindset may steer graduates toward entrepreneurial paths.**
 
-- Advisors and Universities: Facilitate **practical experiences and communication training**, especially for non‑STEM majors, to narrow salary gaps and support entrepreneurial pathways.  
+### Actionable Takeaways  
+Building on these insights:
 
+**Students:**  
+Prioritize internships and soft‑skill development to boost early‑career earnings; nurture satisfaction and academic excellence if entrepreneurship is a goal.  
 
+**Advisors and Universities:**  
+Facilitate practical experiences and communication training, especially for non‑STEM majors, to narrow salary gaps and support entrepreneurial pathways.
+  
 
-**These findings suggest students maximize early‑career salary by investing in experiential learning and interpersonal skills, while a strong academic record and satisfaction mindset correlate with entrepreneurial intent.**
 

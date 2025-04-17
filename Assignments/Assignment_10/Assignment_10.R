@@ -26,7 +26,7 @@ df$current_job_level <- factor(df$current_job_level)
 print(names(df))
 dplyr::glimpse(df)
 
-#-----------------------------------------------------
+# -----------------------------------------------------
 # Exploratory Data Analysis --------------------------------------------
 # Pairwise relationships for numeric vars
 num_cols <- names(df)[vapply(df, is.numeric, logical(1))]
@@ -102,13 +102,13 @@ ggplot(df, aes(x = entrepreneurship, y = career_satisfaction, fill = entrepreneu
   theme_minimal() +
   theme(legend.position = "none")
 
------------------------------------------------------
+# -----------------------------------------------------
 # Train/Test split -----------------------------------------------------
 train_idx <- createDataPartition(df$starting_salary, p = 0.8, list = FALSE)
 train     <- df[train_idx, ]
 test      <- df[-train_idx, ]
 
------------------------------------------------------
+# -----------------------------------------------------
 # Linear model for Starting_Salary ------------------------------------
 lm_base <- lm(
   starting_salary ~ university_gpa + internships_completed +
@@ -130,7 +130,7 @@ par(mfrow = c(2,2))
 plot(lm_step)
 par(mfrow = c(1,1))
 
------------------------------------------------------
+# -----------------------------------------------------
 # Logistic model & threshold tuning for Entrepreneurship -------------
 glm_full <- glm(
   entrepreneurship ~ . -starting_salary,
@@ -181,7 +181,7 @@ pred_best <- factor(ifelse(probs >= best_thresh, "Yes", "No"),
 conf_best <- confusionMatrix(pred_best, test$entrepreneurship, positive = "Yes")
 print(conf_best)
 
------------------------------------------------------
+# -----------------------------------------------------
 # Save artefacts -------------------------------------------------------
 saveRDS(lm_step,   "final_salary_lm.rds")
 saveRDS(glm_step,  "final_entrepreneur_glm.rds")

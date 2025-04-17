@@ -1538,9 +1538,12 @@ linear regression to identify the key drivers of initial compensation
 regression and threshold tuning to understand which attributes influence
 the likelihood of pursuing entrepreneurship after graduation.</li>
 </ol>
-<p>The goal of this study is to provide actionable insights for students
-and advisors on the most impactful factors for salary and
-entrepreneurial outcomes.</p>
+<p>The goal of this study is to provide actionable insights that can
+help students, educators, and academic advisors better understand which
+factors most strongly influence early-career salary and the likelihood
+of pursuing entrepreneurship. By identifying these key drivers, the
+findings aim to support more informed decision-making around course
+selection, skill development, and career planning.</p>
 </div>
 <div id="data-loading-cleaning" class="section level1">
 <h1>Data Loading &amp; Cleaning</h1>
@@ -1856,65 +1859,60 @@ print(conf_final)</code></pre>
 </div>
 </div>
 </div>
-<div id="summary" class="section level1">
-<h1>Summary</h1>
-<ul>
-<li><p><strong>Data preparation:</strong> Cleaned variable names
-(janitor::clean_names), removed the ID column, and converted categorical
-variables to factors, leaving 19 variables for 5,000 graduates.<br />
-</p></li>
-<li><p><strong>Exploratory analysis:</strong> Visualised numeric
-relationships (pairwise plots) and key univariate distributions. Plots
-showed clear positive trends between internships, soft‑skills, and
-starting salary, and strong salary separation by field of study with
-STEM majors leading.</p></li>
-<li><p><strong>Model workflow</strong></p></li>
-<li><p><strong>Salary:</strong> Compared a theory‑driven baseline model
-to a full model, then used stepwise AIC to obtain a parsimonious linear
-model. Test RMSE ≈ <strong>$14,415</strong>.</p></li>
-<li><p><strong>Entrepreneurship:</strong> Fit a full logistic model,
-applied stepwise AIC, then tuned the probability threshold to balance
-performance (optimal ≈ 0.2). Achieved test accuracy ≈ 0.461</p></li>
-</ul>
-</div>
 <div id="conclusions" class="section level1">
 <h1>Conclusions</h1>
-<p><strong>Salary Insights</strong></p>
+<p><strong>Salary:</strong> I compared a theory‑driven baseline model to
+a full model, then used stepwise AIC to identify a more parsimonious
+linear model. Test RMSE was approximately <strong>$14,415</strong>,
+indicating a reasonable degree of predictive accuracy.</p>
+<p><strong>Entrepreneurship:</strong> I fit a full logistic regression
+model, applied stepwise AIC for model selection, and tuned the
+classification threshold (optimal ≈ 0.2) to balance sensitivity and
+specificity. This yielded a test accuracy of about
+<strong>0.461</strong>.</p>
+<div id="key-insights" class="section level3">
+<h3>Key Insights</h3>
+<ul>
+<li><strong>Salary Insights</strong>
 <ul>
 <li><strong>Experiential learning</strong> (internships) and
-<strong>interpersonal abilities</strong> (soft skills, networking) have
-the largest positive impact on starting salary.</li>
-<li>Choice of major matters - <strong>STEM graduates</strong>
-consistently command higher pay.<br />
+<strong>interpersonal abilities</strong> (soft skills, networking) had
+the strongest positive effect on starting salary.<br />
 </li>
-<li>The final model’s RMSE (about <strong>$14,415</strong>) indicates
-reasonably accurate salary prediction across diverse backgrounds.</li>
-</ul>
-<p><strong>Entrepreneurship Insights</strong></p>
-<ul>
-<li><strong>Academic strength</strong> (higher high‑school GPA) and
-<strong>personal outlook</strong> (career satisfaction) modestly
-increase the odds of pursuing entrepreneurship.<br />
+<li>Choice of major plays a major role — <strong>STEM graduates</strong>
+consistently earn more than non‑STEM peers.<br />
 </li>
-<li>Using a tuned cutoff (about 0.2) balances sensitivity and
-specificity, providing roughly <strong>60 percent</strong> correct
-identification for both entrepreneurs and non‑entrepreneurs.</li>
-</ul>
-<p><strong>Actionable Takeaways</strong></p>
+<li>The final model’s RMSE (about <strong>$14,415</strong>) reflects
+moderate but usable predictive power across a diverse sample.</li>
+</ul></li>
+<li><strong>Entrepreneurship Insights</strong>
 <ul>
-<li><p>Students: Prioritise <strong>internships</strong> and soft‑skill
-development** to boost early‑career earnings; nurture
-<strong>satisfaction and academic excellence</strong> if
-entrepreneurship is a goal.</p></li>
-<li><p>Advisors and Universities: Facilitate <strong>practical
-experiences and communication training</strong>, especially for non‑STEM
-majors, to narrow salary gaps and support entrepreneurial
-pathways.</p></li>
+<li><strong>Academic performance</strong> (especially high school GPA)
+and <strong>career satisfaction</strong> both modestly increase the
+likelihood of pursuing entrepreneurship.<br />
+</li>
+<li>A tuned cutoff (around 0.2) provided a balanced ability to detect
+both entrepreneurs and non‑entrepreneurs, achieving roughly
+<strong>60%</strong> classification accuracy for each group.</li>
+</ul></li>
 </ul>
-<p><strong>These findings suggest students maximize early‑career salary
-by investing in experiential learning and interpersonal skills, while a
-strong academic record and satisfaction mindset correlate with
-entrepreneurial intent.</strong></p>
+<p><strong>These results highlight how practical experience and
+interpersonal development boost early‑career salary, while strong
+academics and a satisfaction‑driven mindset may steer graduates toward
+entrepreneurial paths.</strong></p>
+</div>
+<div id="actionable-takeaways" class="section level3">
+<h3>Actionable Takeaways</h3>
+<p>Building on these insights:</p>
+<p><strong>Students:</strong><br />
+Prioritize internships and soft‑skill development to boost early‑career
+earnings; nurture satisfaction and academic excellence if
+entrepreneurship is a goal.</p>
+<p><strong>Advisors and Universities:</strong><br />
+Facilitate practical experiences and communication training, especially
+for non‑STEM majors, to narrow salary gaps and support entrepreneurial
+pathways.</p>
+</div>
 </div>
 
 

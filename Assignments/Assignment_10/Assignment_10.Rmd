@@ -1,213 +1,268 @@
+
 ---
-title: "Assignment_10; Predicting Depression from Student Data"
-author: "Myles Ashbaker"
+title: "BIOL_3100 Final Project"
+subtitle: "Education & Career Success; Data Analysis and Prediction Model"
+author: Myles Ashbaker
 output:
   html_document:
     toc: true
-    toc_float: false
-    number_sections: false
-    theme: readable
+    toc_float: true
+    theme: yeti
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  echo = TRUE,
-  fig.width = 12,
-  fig.height = 6,
-  warning = FALSE,
-  message = FALSE
-)
-```
-
-## Introduction
-#### This analysis explores how psychological, academic, and lifestyle factors relate to depression among a population of students. Depression is treated as a binary outcome (Yes = diagnosed with depression, No = not diagnosed), and I apply logistic regression models to understand and predict it.
-#### The dataset includes over 27,000 responses with variables such as academic pressure, CGPA, suicidal thoughts, sleep duration, and more. Several of the predictors are categorical (e.g., gender, profession, dietary habits), while others are numeric (e.g., age, CGPA, academic pressure). My goal is to determine which variables are most predictive of depression and evaluate several logistic models to compare performance and interpretability.
-
-## Packages
-```{r load-libraries, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 5)
 library(tidyverse)
-library(modelr)
-library(easystats)
-library(ggpubr)
-library(caret)
-library(GGally)
-library(performance)
-library(MASS)
 library(janitor)
-```
-## Data
-```{r}
-depression_raw <- read_csv("../../Data/MRA_Student Depression Dataset.csv", show_col_types = FALSE)
-
-# ---- Basic Cleaning & Type Conversion ----
-depression <- depression_raw %>%
-  rename(suicidal_thoughts = `Have you ever had suicidal thoughts ?`) %>%
-  clean_names() %>%
-  mutate(
-    across(c(gender, city, profession, sleep_duration, dietary_habits,
-             degree, suicidal_thoughts, family_history_of_mental_illness),
-           as.factor),
-    depression = factor(depression, levels = c(0, 1), labels = c("No", "Yes"))
-  )
-
-# ---- Data Check ----
-glimpse(depression)
-summary(depression)
-```
-
-## Exploratory Analysis
-##### I’ll begin by exploring patterns in the data—checking for missing values, class balance, and how depression relates to other variables visually.
-```{r, warning=FALSE}
-# Missing Data Overview
-depression %>% 
-  summarise(across(everything(), \(x) mean(is.na(x)) * 100)) %>% 
-  pivot_longer(everything(), names_to = "variable", values_to = "pct_missing") %>% 
-  arrange(desc(pct_missing))
-
-# Depression Outcome Distribution
-depression %>% 
-  count(depression, name = "n") %>% 
-  mutate(prop = n / sum(n))
-
-# Plot: Numeric Distributions by Depression
-numeric_vars <- depression %>% 
-  dplyr::select(where(is.numeric), -id) %>% 
-  names()
-depression %>% 
-  pivot_longer(cols = all_of(numeric_vars), names_to = "variable", values_to = "value") %>% 
-  ggplot(aes(x = value, fill = depression)) +
-  geom_density(alpha = 0.4) +
-  facet_wrap(~ variable, scales = "free") +
-  theme_minimal()
-
-# Plot: Boxplots by Depression Status
-depression %>% 
-  pivot_longer(cols = all_of(numeric_vars), names_to = "variable", values_to = "value") %>% 
-  ggplot(aes(x = depression, y = value, fill = depression)) +
-  geom_boxplot(outlier.alpha = 0.2) +
-  facet_wrap(~ variable, scales = "free") +
-  theme_minimal()
-
-# Plot: Categorical Variable Proportions
-cat_vars <- depression %>% 
-   dplyr::select(where(is.factor), -depression) %>% 
-  names()
-depression %>% 
-  pivot_longer(cols = all_of(cat_vars), names_to = "variable", values_to = "value") %>% 
-  ggplot(aes(x = value, fill = depression)) +
-  geom_bar(position = "fill") +
-  facet_wrap(~ variable, scales = "free_x") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-# Plot: Pairwise Numeric Relationships
-pair_vars <- depression %>% 
-   dplyr::select(where(is.numeric), -id, -job_satisfaction) %>% 
-  names()
-GGally::ggpairs(depression, columns = pair_vars, aes(color = depression, alpha = 0.4))
-```
-
-## Modeling
-##### Next, I’ll build some logistic regression models using key predictors to estimate the probability of a student experiencing depression.
-##### I selected academic pressure, CGPA, suicidal thoughts, and sleep duration as my primary predictors.
-```{r}
-# ---- Logistic Regression Models ----
-mod1 <- glm(depression ~ academic_pressure + cgpa + suicidal_thoughts, data = depression, family = binomial)
-mod2 <- glm(depression ~ academic_pressure * cgpa + suicidal_thoughts, data = depression, family = binomial)
-mod3 <- glm(depression ~ academic_pressure * cgpa * suicidal_thoughts, data = depression, family = binomial)
-mod4 <- glm(depression ~ academic_pressure * cgpa * suicidal_thoughts + I(academic_pressure^2) + I(cgpa^2), data = depression, family = binomial)
-
-# ---- Stepwise AIC Model ----
-full_mod <- glm(depression ~ ., data = depression, family = binomial)
-step_mod <- stepAIC(full_mod, trace = 0)
-mod5 <- glm(formula = step_mod$formula, data = depression, family = binomial)
-
-# ---- Simple Alt. Model ----
-mod6 <- glm(depression ~ (academic_pressure + cgpa) * suicidal_thoughts + sleep_duration, data = depression, family = binomial)
-```
-
-## Model Comparison
-##### I’ll compare the performance of all models using metrics like accuracy and AIC to find the best balance between complexity and predictive power.
-```{r, message=FALSE, warning=FALSE}
-comps <- compare_performance(mod1, mod2, mod3, mod4, mod5, mod6, rank = TRUE)
-print(comps)
-plot(comps) + theme_minimal()
-```
-
-##### mod5 is the clear winner across all metrics — best fit and most accurate
-
-## Predictions vs Observations
-##### To evaluate model fit, I’ll compare predicted probabilities with actual outcomes. This helps me see how well the models separate the two classes.
-```{r, message=FALSE, warning=FALSE}
-# Plot: Predicted vs Observed for All Models
-depression_preds <- depression %>% gather_predictions(mod1, mod2, mod3, mod4, mod5, mod6, type = "response")
-depression_preds %>%
-  ggplot(aes(x = as.numeric(depression) - 1, y = pred, color = model)) +
-  geom_jitter(width = 0.1, alpha = 0.3) +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_minimal() +
-  labs(
-    title = "Predicted Probability vs Actual Depression Status",
-    x = "Actual Depression (0 = No, 1 = Yes)",
-    y = "Predicted Probability"
-  )
-# Each dot is a predicted probability for an individual
-# The x-axis is their actual depression status (0 or 1)
-```
-
-##### The best model (mod5) produces consistently higher predicted probabilities 
-##### for true positives (depression = 1) than for true negatives
-
-## Cross-Validation
-##### To test how well the top models generalize, I’ll use a train/test split and assess performance on new, unseen data.
-```{r, message=FALSE, warning=FALSE}
+library(GGally)
+library(caret)
+library(easystats)
 set.seed(123)
-train_index <- createDataPartition(depression$depression, p = 0.8, list = FALSE)
-train_data <- depression[train_index, ]
-test_data  <- depression[-train_index, ]
+```
 
-mod5_cv <- glm(formula = mod5$formula, data = train_data, family = binomial)
-mod6_cv <- glm(formula = mod6$formula, data = train_data, family = binomial)
+# Introduction
 
-test_preds <- test_data %>% gather_predictions(mod5_cv, mod6_cv, type = "response")
+This analysis examines which academic and experiential factors predict early career success using the **Education & Career Success** dataset (*n = 5,000*).
 
-# Plot: Cross-Validation Test Predictions vs Actual
-test_preds %>%
-  ggplot(aes(x = as.numeric(depression) - 1, y = pred, color = model)) +
-  geom_jitter(width = 0.1, alpha = 0.3) +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_minimal() +
-  labs(
-    title = "Test Set Predictions vs Actual Depression Status",
-    subtitle = "Dashed line shows ideal prediction",
-    x = "Actual Depression (0 = No, 1 = Yes)",
-    y = "Predicted Probability"
+Specifically:
+
+1. **Starting Salary Prediction** – applying multiple linear regression to identify the key drivers of initial compensation (e.g., GPA, internships, soft skills).  
+2. **Entrepreneurial Propensity** – using logistic regression and threshold tuning to understand which attributes influence the likelihood of pursuing entrepreneurship after graduation.
+
+The goal of this study is to provide actionable insights for students and advisors on the most impactful factors for salary and entrepreneurial outcomes.
+
+# Data Loading & Cleaning
+
+### Thought Process
+- Standardize column names for tidy handling  
+- Remove the identifier column  
+- Convert categorical variables to factors for proper modeling
+
+```{r data-load}
+df <- read_csv("../../Data/MRA_education_career_success.csv", show_col_types = FALSE)
+
+df <- janitor::clean_names(df)
+
+df$student_id <- NULL
+
+df <- df %>%
+  mutate(
+    entrepreneurship   = factor(entrepreneurship, levels = c("No","Yes")),
+    gender             = factor(gender),
+    field_of_study     = factor(field_of_study),
+    current_job_level  = factor(current_job_level)
   )
+
+glimpse(df)
 ```
 
-## Model Interpretation
-##### Finally, I’ll interpret the final model’s coefficients to understand how each predictor affects depression risk—using odds ratios for clearer meaning.
-```{r}
-summary(mod6)
-model_parameters(mod6, exponentiate = TRUE)
+# Exploratory Data Analysis
 
-# Plot: Coefficient Estimates for Final Model (mod6)
-plot(model_parameters(mod6)) +
+### Pairwise Numeric Scatterplots
+```{r eda-pairs, fig.width=12, fig.height=10}
+num_cols <- names(df)[vapply(df, is.numeric, logical(1))]
+GGally::ggpairs(df, columns = num_cols, aes(alpha = 0.4))
+```
+
+### Salary Distribution
+##### shows most graduates earn in the mid‑range, with a long tail of higher salaries but very few low salaries.
+```{r eda-salary-dist}
+ggplot(df, aes(starting_salary)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+  scale_x_continuous(labels = scales::label_dollar()) +
+  labs(title = "Distribution of Starting Salary",
+       x = "Starting Salary", y = "Number of Graduates") +
+  theme_minimal()
+```
+
+### Salary by Field of Study
+##### reveals that STEM majors cluster at higher pay levels, while arts‑related fields sit lower on the scale.
+```{r eda-field}
+ggplot(df, aes(fct_reorder(field_of_study, starting_salary, median), starting_salary)) +
+  geom_boxplot(outlier.alpha = 0.3) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(title = "Starting Salary by Field of Study",
+       x = NULL, y = "Starting Salary") +
+  theme_minimal()
+```
+
+### Internships vs Salary
+##### illustrates a clear upward trend: more internships generally translate into a higher starting salary.
+```{r eda-internship}
+ggplot(df, aes(internships_completed, starting_salary)) +
+  geom_jitter(width = 0.25, alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE, color = "darkred") +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(title = "Internships Completed vs. Starting Salary",
+       x = "Internships Completed", y = "Starting Salary") +
+  theme_minimal()
+```
+
+### Years to Promotion by Entrepreneurship
+##### indicates that entrepreneurs and non‑entrepreneurs reach their first promotion in a similar time frame.
+```{r eda-promotion}
+ggplot(df, aes(entrepreneurship, years_to_promotion, fill = entrepreneurship)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Years to Promotion by Entrepreneurship Status",
+       x = "Entrepreneurship", y = "Years to Promotion") +
+  theme_minimal()
+```
+
+### Salary vs University Ranking
+##### displays a gentle downward slope showing graduates from better‑ranked universities (lower rank number) tend to earn more.
+```{r eda-ranking}
+ggplot(df, aes(university_ranking, starting_salary)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "loess", se = FALSE, color = "steelblue") +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(title = "Starting Salary vs. University Ranking",
+       x = "University Ranking (lower = better)", y = "Starting Salary") +
+  theme_minimal()
+```
+
+### Salary by Gender
+##### box‑plots suggest median salaries are broadly comparable across genders with overlapping ranges.
+```{r eda-gender}
+ggplot(df, aes(gender, starting_salary, fill = gender)) +
+  geom_boxplot(alpha = 0.7, outlier.alpha = 0.3) +
+  scale_y_continuous(labels = scales::label_dollar()) +
+  labs(title = "Starting Salary by Gender",
+       x = "Gender", y = "Starting Salary") +
   theme_minimal() +
-  labs(title = "Coefficient Estimates – Final Model (mod6)")
+  theme(legend.position = "none")
 ```
 
+### Distribution of Job Offers
+##### confirms that most graduates receive one to three offers, while very high counts are rare.
+```{r eda-offers}
+ggplot(df, aes(job_offers)) +
+  geom_bar(fill = "coral", alpha = 0.8) +
+  labs(title = "Distribution of Number of Job Offers",
+       x = "Job Offers", y = "Number of Graduates") +
+  theme_minimal()
+```
 
-##### The final model suggests that individuals with high academic pressure, low sleep duration, and a history of suicidal thoughts are more likely to report depression. Even modest increases in CGPA are associated with slightly increased odds of depression, though this may reflect perfectionism or pressure to maintain high performance.
+### Career Satisfaction by Entrepreneurship
+##### shows entrepreneurs report slightly higher median career satisfaction than non‑entrepreneurs.
+```{r eda-satisfaction}
+ggplot(df, aes(entrepreneurship, career_satisfaction, fill = entrepreneurship)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Career Satisfaction by Entrepreneurship Status",
+       x = "Entrepreneurship", y = "Career Satisfaction (1–10)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
 
-## Conclusion
-#### This analysis explored how psychological, academic, and lifestyle factors predict depression status in a sample of over 27,000 individuals. Six logistic regression models were built and compared. The stepwise AIC model (mod5) achieved the highest overall performance, but the final hand-tuned model (mod6) offered strong interpretability while still maintaining solid predictive power.
-#### Key predictors of depression included academic pressure, history of suicidal thoughts, low sleep duration, and (to a lesser extent) CGPA. Interaction terms and extended sleep durations did not consistently improve model fit.
+# Train/Test Split
+##### Thought process: To measure how well the models generalize to new graduates, prevents over‑fitting, and gives an honest estimate of real‑world predictive performance.
+```{r split}
+train_idx <- createDataPartition(df$starting_salary, p = 0.8, list = FALSE)
+train <- df[train_idx, ]
+test  <- df[-train_idx, ]
+```
 
-## Takeaway Messages
-- Academic pressure is a strong and consistent predictor of depression.
-- Individuals reporting suicidal thoughts are significantly more likely to report depression.
-- Short sleep duration (less than 5 hours) is associated with increased depression risk.
-- CGPA has a modest positive association, possibly reflecting academic perfectionism or stress.
-- More complex interactions and rare sleep categories (e.g., “Other”) do not improve the model.
-- A parsimonious, interpretable model can perform nearly as well as a fully automated model, making it valuable for real-world applications in student mental health screening and intervention.
+# Modeling
+
+### Linear Regression for Starting Salary
+
+##### Thought Process: Start with a theory‑driven subset, compare to a full model, and let stepwise AIC select the most parsimonious predictor set.
+
+```{r lm-fit}
+lm_base <- lm(starting_salary ~ university_gpa + internships_completed +
+                certifications + soft_skills_score + networking_score +
+                field_of_study, data = train)
+
+lm_full <- lm(starting_salary ~ . -entrepreneurship, data = train)
+
+lm_step <- MASS::stepAIC(lm_full, trace = 0)  # AIC‑optimized model
+
+compare_performance(lm_base, lm_step, rank = TRUE)
+model_parameters(lm_step)
+
+rmse_val <- RMSE(predict(lm_step, test), test$starting_salary)
+cat("Test RMSE:", round(rmse_val, 2), "\n")
+```
+
+#### Diagnostics
+```{r lm-diag, fig.height=6}
+par(mfrow = c(2,2)); plot(lm_step); par(mfrow = c(1,1))
+```
+
+### Logistic Regression for Entrepreneurship
+
+##### Thought Process:  Use a full logistic model, perform stepwise AIC, then tune the probability cutoff to balance sensitivity and specificity.
+
+```{r glm-fit}
+glm_full <- glm(entrepreneurship ~ . -starting_salary, data = train, family = binomial)
+glm_step <- MASS::stepAIC(glm_full, trace = 0)
+
+model_parameters(glm_step, exponentiate = TRUE)
+
+probs <- predict(glm_step, test, type = "response")
+
+thresholds <- seq(0.1, 0.9, by = 0.1)
+metrics <- map_dfr(thresholds, function(t) {
+  pred <- factor(ifelse(probs >= t, "Yes", "No"), levels = c("No","Yes"))
+  cm <- confusionMatrix(pred, test$entrepreneurship, positive = "Yes")
+  tibble(threshold = t,
+         Accuracy = cm$overall["Accuracy"],
+         Sensitivity = cm$byClass["Sensitivity"],
+         Specificity = cm$byClass["Specificity"])
+})
+print(metrics)
+```
+
+```{r threshold-plot}
+metrics %>%
+  pivot_longer(-threshold) %>%
+  ggplot(aes(threshold, value, color = name)) +
+  geom_line() + geom_point() +
+  labs(title = "Threshold Tuning Metrics",
+       x = "Probability Threshold", y = "Metric Value") +
+  theme_minimal()
+```
+
+```{r glm-final}
+best_t <- metrics$threshold[which.max(metrics$Sensitivity + metrics$Specificity)]
+cat("Optimal threshold:", best_t, "\n")
+
+pred_final <- factor(ifelse(probs >= best_t, "Yes", "No"), levels = c("No","Yes"))
+conf_final <- confusionMatrix(pred_final, test$entrepreneurship, positive = "Yes")
+print(conf_final)
+```
+
+# Summary  
+
+- **Data preparation:** Cleaned variable names (janitor::clean_names), removed the ID column, and converted categorical variables to factors, leaving 19 variables for 5,000 graduates.  
+- **Exploratory analysis:** Visualised numeric relationships (pairwise plots) and key univariate distributions. Plots showed clear positive trends between internships, soft‑skills, and starting salary, and strong salary separation by field of study with STEM majors leading.  
+
+- **Model workflow**
+ - **Salary:** Compared a theory‑driven baseline model to a full model, then used stepwise AIC to obtain a parsimonious linear model. Test RMSE ≈ **`r scales::dollar(round(rmse_val, 0))`**.
+  
+  - **Entrepreneurship:** Fit a full logistic model, applied stepwise AIC, then tuned the probability threshold to balance performance (optimal ≈ `r best_t`). Achieved test accuracy ≈ `r round(metrics$Accuracy[metrics$threshold==best_t], 3)` 
+
+# Conclusions  
+
+**Salary Insights** 
+
+- **Experiential learning** (internships) and **interpersonal abilities** (soft skills, networking) have the largest positive impact on starting salary. 
+- Choice of major matters - **STEM graduates** consistently command higher pay.  
+- The final model’s RMSE (about **`r scales::dollar(round(rmse_val, 0))`**) indicates reasonably accurate salary prediction across diverse backgrounds.  
+
+**Entrepreneurship Insights** 
+
+- **Academic strength** (higher high‑school GPA) and **personal outlook** (career satisfaction) modestly increase the odds of pursuing entrepreneurship.  
+- Using a tuned cutoff (about `r best_t`) balances sensitivity and specificity, providing roughly **60 percent** correct identification for both entrepreneurs and non‑entrepreneurs.  
+
+**Actionable Takeaways**  
+
+- Students: Prioritise **internships** and soft‑skill development** to boost early‑career earnings; nurture **satisfaction and academic excellence** if entrepreneurship is a goal.  
+
+- Advisors and Universities: Facilitate **practical experiences and communication training**, especially for non‑STEM majors, to narrow salary gaps and support entrepreneurial pathways.  
+
+
+
+**These findings suggest students maximize early‑career salary by investing in experiential learning and interpersonal skills, while a strong academic record and satisfaction mindset correlate with entrepreneurial intent.**
+

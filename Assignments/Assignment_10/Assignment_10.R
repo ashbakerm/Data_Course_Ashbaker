@@ -1,215 +1,189 @@
-# ---- Load libraries ----
+# Packages -------------------------------------------------------------
 library(tidyverse)
-library(modelr)
-library(easystats)
-library(ggpubr)
-library(caret)
-library(GGally)
-library(performance)
-library(MASS)
-library(janitor)
-
-# ---- Data ----
-depression_raw <- read_csv("../../Data/MRA_Student Depression Dataset.csv",
-                           show_col_types = FALSE)
-
-# ---- Basic Cleaning & Type Conversion ----
-depression <- depression_raw %>%
-  rename(suicidal_thoughts = `Have you ever had suicidal thoughts ?`) %>%
-  clean_names() %>%
-  mutate(
-    across(c(gender, city, profession, sleep_duration, dietary_habits,
-             degree, suicidal_thoughts, family_history_of_mental_illness),
-           as.factor),
-    depression = factor(depression, levels = c(0, 1),
-                        labels = c("No", "Yes"))
-  )
-
-# ---- Data Check ----
-glimpse(depression)
-summary(depression)
-
-# ---- Missing Overview ----
-depression %>% 
-  summarise(across(everything(), \(x) mean(is.na(x)) * 100)) %>% 
-  pivot_longer(everything(),
-               names_to  = "variable",
-               values_to = "pct_missing") %>% 
-  arrange(desc(pct_missing))
-
-# ---- Outcome Balance ----
-depression %>% 
-  count(depression, name = "n") %>% 
-  mutate(prop = n / sum(n))
-
-# ---- Numeric Distributions ----
-numeric_vars <- depression %>% 
-  dplyr::select(where(is.numeric), -id) %>% 
-  names()
-
-depression %>% 
-  pivot_longer(cols = all_of(numeric_vars),
-               names_to  = "variable",
-               values_to = "value") %>% 
-  ggplot(aes(x = value, fill = depression)) +
-  geom_density(alpha = 0.4) +
-  facet_wrap(~ variable, scales = "free") +
-  theme_minimal()
-
-# ---- Boxplots by Outcome ----
-depression %>% 
-  pivot_longer(cols = all_of(numeric_vars),
-               names_to  = "variable",
-               values_to = "value") %>% 
-  ggplot(aes(x = depression, y = value, fill = depression)) +
-  geom_boxplot(outlier.alpha = 0.2) +
-  facet_wrap(~ variable, scales = "free") +
-  theme_minimal()
-
-# ---- Categorical Proportions ----
-cat_vars <- depression %>% 
-  dplyr::select(where(is.factor), -depression) %>% 
-  names()
-
-depression %>% 
-  pivot_longer(cols = all_of(cat_vars),
-               names_to  = "variable",
-               values_to = "value") %>% 
-  ggplot(aes(x = value, fill = depression)) +
-  geom_bar(position = "fill") +
-  facet_wrap(~ variable, scales = "free_x") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-# ---- Pairwise Relationships ----
-## Filtered: excludes zero values = id and job_satisfaction
-pair_vars <- depression %>%
-  dplyr::select(where(is.numeric), -id, -job_satisfaction) %>%
-  names()
-
-GGally::ggpairs(depression, columns = pair_vars, aes(color = depression, alpha = 0.4))
-
-# ---- Logistic Regression Models ----
-
-mod1 <- glm(
-  depression ~ academic_pressure + cgpa + suicidal_thoughts,
-  data   = depression,
-  family = binomial
-)
-
-mod2 <- glm(
-  depression ~ academic_pressure * cgpa + suicidal_thoughts,
-  data   = depression,
-  family = binomial
-)
-
-mod3 <- glm(
-  depression ~ academic_pressure * cgpa * suicidal_thoughts,
-  data   = depression,
-  family = binomial
-)
-
-mod4 <- glm(
-  depression ~ academic_pressure * cgpa * suicidal_thoughts +
-    I(academic_pressure^2) + I(cgpa^2),
-  data   = depression,
-  family = binomial
-)
-
-# ---- Stepwise AIC Model ----
-
-full_mod <- glm(depression ~ ., data = depression, family = binomial)
-step_mod <- stepAIC(full_mod, trace = 0)
-mod5 <- glm(formula = step_mod$formula, data = depression, family = binomial)
-
-# ---- Simple Alt. Model ----
-
-mod6 <- glm(
-  depression ~ (academic_pressure + cgpa) * suicidal_thoughts +
-    sleep_duration,
-  data   = depression,
-  family = binomial
-)
-
-
-# ---- Performance Metrics Table ----
-comps <- compare_performance(
-  mod1, mod2, mod3, mod4, mod5, mod6,
-  rank = TRUE
-)
-
-print(comps)
-
-# mod5 is the clear winner across all metrics — best fit and most accurate
-
-# ---- Visual Comparison ----
-plot(comps) +
-  theme_minimal()
-
-
-# ---- Predictions for Each Model ----
-depression_preds <- depression %>%
-  gather_predictions(mod1, mod2, mod3, mod4, mod5, mod6, type = "response")
-
-# ---- Plot Predictions vs Actual ----
-depression_preds %>%
-  ggplot(aes(x = as.numeric(depression) - 1, y = pred, color = model)) +
-  geom_jitter(width = 0.1, alpha = 0.3) +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_minimal() +
-  labs(
-    title = "Predicted Probability vs Actual Depression Status",
-    x = "Actual Depression (0 = No, 1 = Yes)",
-    y = "Predicted Probability"
-  )
-# Each dot is a predicted probability for an individual
-# The x-axis is their actual depression status (0 or 1)
-
-## The best model (mod5) produces consistently higher predicted 
-## probabilities for true positives (depression = 1) than for true negatives
-
-
-# ---- Split Data into Training and Testing ----
+library(janitor)      
+library(GGally)      
+library(caret)        
+library(easystats)   
 set.seed(123)
-train_index <- createDataPartition(depression$depression, p = 0.8, list = FALSE)
 
-train_data <- depression[train_index, ]
-test_data  <- depression[-train_index, ]
+# -----------------------------------------------------
+# Load the CSV
+df <- read_csv("../../Data/MRA_education_career_success.csv", show_col_types = FALSE)
 
-# ---- Refit Top Models on Training Data ----
-mod5_cv <- glm(formula = mod5$formula, data = train_data, family = binomial)
-mod6_cv <- glm(formula = mod6$formula, data = train_data, family = binomial)
+# Clean up column names
+df <- janitor::clean_names(df)
 
-# ---- Generate Predictions on Test Data ----
-test_preds <- test_data %>%
-  gather_predictions(mod5_cv, mod6_cv, type = "response")
+# Drop the ID column
+df$student_id <- NULL
 
-# ---- Plot Predictions vs Actual (Test Set) ----
-test_preds %>%
-  ggplot(aes(x = as.numeric(depression) - 1, y = pred, color = model)) +
-  geom_jitter(width = 0.1, alpha = 0.3) +
-  geom_smooth(method = "lm", se = FALSE) +
+# Convert to factors
+df$entrepreneurship  <- factor(df$entrepreneurship,  levels = c("No","Yes"))
+df$gender            <- factor(df$gender)
+df$field_of_study    <- factor(df$field_of_study)
+df$current_job_level <- factor(df$current_job_level)
+
+# Quick check
+print(names(df))
+dplyr::glimpse(df)
+
+#-----------------------------------------------------
+# Exploratory Data Analysis --------------------------------------------
+# Pairwise relationships for numeric vars
+num_cols <- names(df)[vapply(df, is.numeric, logical(1))]
+GGally::ggpairs(df, columns = num_cols, aes(alpha = 0.4))
+
+# Distribution of Starting Salary
+ggplot(df, aes(starting_salary)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+  scale_x_continuous(labels = scales::label_dollar()) +
+  labs(title = "Distribution of Starting Salary",
+       x = "Starting Salary",
+       y = "Number of Graduates") +        
+  theme_minimal()
+
+# Salary by Field of Study
+ggplot(df, aes(fct_reorder(field_of_study, starting_salary, .fun = median),
+               starting_salary)) +
+  geom_boxplot(outlier.alpha = 0.3) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::label_dollar()) +            
+  labs(title = "Starting Salary by Field of Study",
+       x = "", y = "Starting Salary") +
+  theme_minimal()
+
+# Internships vs Salary (with trend)
+ggplot(df, aes(internships_completed, starting_salary)) +
+  geom_jitter(width = 0.2, alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE, color = "darkred") +
+  scale_y_continuous(labels = scales::label_dollar()) +              
+  labs(title = "Internships Completed vs. Starting Salary",
+       x = "Internships Completed", y = "Starting Salary") +
+  theme_minimal()
+
+# Years to Promotion by Entrepreneurship
+ggplot(df, aes(x = entrepreneurship, y = years_to_promotion, fill = entrepreneurship)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Years to Promotion by Entrepreneurship Status",
+       x = "Entrepreneurship", y = "Years to Promotion") +
+  theme_minimal()
+
+# Salary vs. University Ranking
+ggplot(df, aes(university_ranking, starting_salary)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "loess", se = FALSE, color = "steelblue") +
+  scale_y_continuous(labels = scales::label_dollar()) +             
+  labs(title = "Starting Salary vs. University Ranking",
+       x = "University Ranking (lower = better)",
+       y = "Starting Salary") +
+  theme_minimal()
+
+# Salary by Gender
+ggplot(df, aes(x = gender, y = starting_salary, fill = gender)) +
+  geom_boxplot(alpha = 0.7, outlier.alpha = 0.3) +
+  labs(title = "Starting Salary by Gender",
+       x = "Gender", y = "Starting Salary") +
+  scale_y_continuous(labels = scales::dollar_format(prefix = "$")) +
   theme_minimal() +
-  labs(
-    title = "Test Set Predictions vs Actual Depression Status",
-    subtitle = "Dashed line shows ideal prediction",
-    x = "Actual Depression (0 = No, 1 = Yes)",
-    y = "Predicted Probability"
+  theme(legend.position = "none")
+
+# Distribution of Job Offers
+ggplot(df, aes(job_offers)) +
+  geom_bar(fill = "coral", alpha = 0.8) +
+  labs(title = "Distribution of Number of Job Offers",
+       x = "Job Offers",
+       y = "Number of Graduates") +
+  theme_minimal()
+
+# Career Satisfaction by Entrepreneurship
+ggplot(df, aes(x = entrepreneurship, y = career_satisfaction, fill = entrepreneurship)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Career Satisfaction by Entrepreneurship Status",
+       x = "Entrepreneurship", y = "Career Satisfaction (1–10)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+-----------------------------------------------------
+# Train/Test split -----------------------------------------------------
+train_idx <- createDataPartition(df$starting_salary, p = 0.8, list = FALSE)
+train     <- df[train_idx, ]
+test      <- df[-train_idx, ]
+
+-----------------------------------------------------
+# Linear model for Starting_Salary ------------------------------------
+lm_base <- lm(
+  starting_salary ~ university_gpa + internships_completed +
+    certifications + soft_skills_score +
+    networking_score + field_of_study,
+  data = train
+)
+lm_full <- lm(starting_salary ~ . -entrepreneurship, data = train)
+lm_step <- MASS::stepAIC(lm_full, trace = 0)
+
+print(compare_performance(lm_base, lm_step, rank = TRUE))
+model_parameters(lm_step)
+
+test_rmse <- RMSE(predict(lm_step, newdata = test), test$starting_salary)
+cat(sprintf("Test RMSE: %.2f\n", test_rmse))
+
+# Plot residuals & diagnostics
+par(mfrow = c(2,2))
+plot(lm_step)
+par(mfrow = c(1,1))
+
+-----------------------------------------------------
+# Logistic model & threshold tuning for Entrepreneurship -------------
+glm_full <- glm(
+  entrepreneurship ~ . -starting_salary,
+  data   = train,
+  family = binomial
+)
+glm_step <- MASS::stepAIC(glm_full, trace = 0)
+model_parameters(glm_step, exponentiate = TRUE)
+
+probs <- predict(glm_step, newdata = test, type = "response")
+
+# Tune threshold 0.1–0.9
+thresholds <- seq(0.1, 0.9, by = 0.1)
+results <- tibble(threshold = thresholds)
+
+metrics <- map_dfr(thresholds, function(thr) {
+  pred <- factor(ifelse(probs >= thr, "Yes", "No"),
+                 levels = c("No","Yes"))
+  cm   <- confusionMatrix(pred, test$entrepreneurship, positive = "Yes")
+  tibble(
+    threshold   = thr,
+    Accuracy    = cm$overall["Accuracy"],
+    Sensitivity = cm$byClass["Sensitivity"],
+    Specificity = cm$byClass["Specificity"]
   )
+})
 
+print(metrics)
 
-# ---- Summarize Final Model (mod6) ----
-summary(mod6)
+# Plot threshold tuning curves
+metrics %>%
+  pivot_longer(-threshold) %>%
+  ggplot(aes(x = threshold, y = value, color = name)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  labs(title = "Threshold Tuning Metrics",
+       x = "Probability Threshold",
+       y = "Metric Value",
+       color = "") +
+  theme_minimal()
 
-# ---- Estimate & Interpret Coefficients ----
-model_parameters(mod6, exponentiate = TRUE)
+# pick best threshold
+best_thresh <- metrics$threshold[which.max(metrics$Sensitivity + metrics$Specificity)]
+cat(sprintf("Optimal threshold: %.2f\n", best_thresh))
 
-# ---- Visualize Coefficients ----
-plot(model_parameters(mod6)) +
-  theme_minimal() +
-  labs(title = "Coefficient Estimates – Final Model (mod6)")
+pred_best <- factor(ifelse(probs >= best_thresh, "Yes", "No"),
+                    levels = c("No","Yes"))
+conf_best <- confusionMatrix(pred_best, test$entrepreneurship, positive = "Yes")
+print(conf_best)
 
-## Individuals with high academic pressure, low sleep duration, and a history of suicidal thoughts are more likely
-## to report depression. Even modest increases in CGPA are associated with slightly increased odds of depression
-      ## though this may reflect perfectionism or pressure to maintain high performance.
-
+-----------------------------------------------------
+# Save artefacts -------------------------------------------------------
+saveRDS(lm_step,   "final_salary_lm.rds")
+saveRDS(glm_step,  "final_entrepreneur_glm.rds")
+write_csv(as_tibble(conf_best$table, .name_repair = "unique"),
+          "entrepreneur_confusion_matrix.csv")

@@ -23,7 +23,7 @@ set.seed(123)
 
 # Introduction
 
-This analysis examines which academic and experiential factors predict early career success using the **Education & Career Success** dataset (*n = 5,000*).
+This analysis examines which academic and experiential factors predict early career success using the **Education & Career Success** dataset (*n = 5,000*) sourced from Kaggle: [Education and Career Success – by Adil Shamim](https://www.kaggle.com/datasets/adilshamim8/education-and-career-success)
 
 Specifically:
 
@@ -262,5 +262,6 @@ Prioritize internships and soft‑skill development to boost early‑career earn
 **Advisors and Universities:**  
 Facilitate practical experiences and communication training, especially for non‑STEM majors, to narrow salary gaps and support entrepreneurial pathways.
   
+
 
 

@@ -187,3 +187,8 @@ saveRDS(lm_step,   "final_salary_lm.rds")
 saveRDS(glm_step,  "final_entrepreneur_glm.rds")
 write_csv(as_tibble(conf_best$table, .name_repair = "unique"),
           "entrepreneur_confusion_matrix.csv")
+
+# -----------------------------------------------------
+# Dataset Source:
+# https://www.kaggle.com/datasets/adilshamim8/education-and-career-success
+# -----------------------------------------------------

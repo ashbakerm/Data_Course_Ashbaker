@@ -1,10 +1,15 @@
 ---
-title: "About Me"
+title: "Myles Ashbaker"
 output: html_document
 ---
-#### Myles Ashbaker
 
-I’m a biology graduate from Utah Valley University with a deep interest in metabolic health, nutrition, and human optimization. I manage a sales team for Greenix Pest Control during the summers. Outside of that, I’m building businesses in wellness, skincare, and diagnostics—including a future metabolic health lab in Tri-Cities, WA. I am all about systems, strategy, and creating impact. I’m especially interested in bridging the gap between science and everyday life, creating systems that make better health more accessible and actionable.
+Hi, I’m Myles Ashbaker — a biology graduate, entrepreneur, and wellness enthusiast based in the Tri-Cities area of Washington. I earned my B.S. in Biology from Utah Valley University in 2025, where I developed a strong foundation in metabolic science, nutrition, and the data behind human health.
+
+Each summer, I manage a high-performing sales team for Greenix Pest Control, where I’ve gained valuable experience in leadership, systems, and strategy. The rest of the year, my focus is on building businesses that bridge the gap between science and everyday health — including Vitalis, a wellness and recovery center offering Nordic contrast therapy, metabolic testing, and personalized lab analysis to help people optimize their health from the inside out.
+
+My wife, Jenna, is a master esthetician specializing in acne and corrective skincare. Together, we’re launching Tri-Cities Acne Clinic, a results-driven skincare studio focused on education, customized treatment, and long-term skin health.
+
+At the core of everything I do is a passion for systems, strategy, and creating impact — whether that’s through coaching, data-driven tools, or health-centered spaces that make people feel their best. My long-term vision includes opening a full metabolic health lab in Tri-Cities, designed to make better health more accessible, measurable, and personalized for everyone.
 
 Lets Connect!
 
